@@ -1,26 +1,114 @@
 <!doctype html>
 
-<body bgcolor="white">
-<title>My search page!</title>
-<style>
-dd {
-    width:100%
-}
-</style>
-<div style="width:100%">
-<h3 style="background-color:black;color:lightgrey"> Wikipedia Film Search </h3>
+<html lang="en" style="background-color: lightgrey">
+<head>
+    <title>2018 Movie Search</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-<h1>Wikipedia film search page</h1>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+          integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+</head>
 
+<body style="background-color: lightgrey">
 
-<form action="/results" name="search" method="post">
-    <dl>
-        <p>Free text search:</p>
-        <dd><textarea rows="4" cols="100" name="query"></textarea>  
-        <dd>Search in starring: <input type="text" style="width:300px" name="starring">   
-        <dd>Runtime: min <input type="text" name="mintime"> max <input type="text" name="maxtime">
-        <dd><input type="submit" value="Search">
-    </dl>
-</form>
+<div class="container">
+    <div class="card shadow-lg mx-auto my-5" style="border-radius: 1.5rem !important;">
+        <div class="card-body">
+            <h2 class="card-title text-center mt-4 mb-5">2018 Film Search</h2>
+            <div class="col mx-auto">
+                {# Use a form to prompt the user for a query. Send the data to the server using the POST method.
+                The value of action is the path for the url that will be returned #}
+                <form action="/results" name="search" method="post">
+                    <div class="row my-4">
+                        <div class="col">
+                            <input type="text" name="query" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="Free text search">
+                        </div>
+                        <div class="col-auto pl-0">
+                            <input type="submit" value="Search" class="btn btn-primary"
+                                   style="border-radius: 1.5rem !important;">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label class="mb-1 mt-2">starring</label>
+                            <input type="text" name="starring" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                        <div class="col">
+                            <label class="mb-1 mt-2">director</label>
+                            <input type="text" name="director" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                        <div class="col">
+                            <label class="mb-1 mt-2">location</label>
+                            <input type="text" name="location" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label class="mb-1 mt-2">language</label>
+                            <input type="text" name="language" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                        <div class="col">
+                            <label class="mb-1 mt-2">time</label>
+                            <input type="text" name="time" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                        <div class="col">
+                            <label class="mb-1 mt-2">categories</label>
+                            <input type="text" name="categories" class="form-control"
+                                   style="border-radius: 1.5rem !important;" placeholder="optional">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="col">
+                            <label class="mb-1 mt-2">min runtime</label>
+                            <div class="input-group mb-2">
+                                <div class="input-group-prepend">
+                                    <div class="input-group-text"
+                                         style="border-top-left-radius: 1.5rem; border-bottom-left-radius: 1.5rem">Min
+                                    </div>
+                                </div>
+                                <input type="text" name="mintime" class="form-control"
+                                       style="border-top-right-radius: 1.5rem; border-bottom-right-radius: 1.5rem"
+                                       placeholder="optional">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label class="mb-1 mt-2">max runtime</label>
+                            <div class="input-group mb-2">
+                                <div class="input-group-prepend">
+                                    <div class="input-group-text"
+                                         style="border-top-left-radius: 1.5rem; border-bottom-left-radius: 1.5rem">Max
+                                    </div>
+                                </div>
+                                <input type="text" name="maxtime" class="form-control"
+                                       style="border-top-right-radius: 1.5rem; border-bottom-right-radius: 1.5rem"
+                                       placeholder="optional">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
+        integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
+        integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+        crossorigin="anonymous"></script>
 </body>
+</html>

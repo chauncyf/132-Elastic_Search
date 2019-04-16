@@ -19,12 +19,21 @@ es = Elasticsearch()
 # You can create a custom analyzer by choosing among elasticsearch options
 # or writing your own functions.
 # Elasticsearch also has default analyzers that might be appropriate.
-my_analyzer = analyzer('custom',
-                       tokenizer='standard',
-                       filter=['lowercase', 'stop'])
+my_analyzer = analyzer('custom', tokenizer='standard', filter=['lowercase', 'stop'])
 title_analyzer = analyzer('custom', tokenizer='whitespace', filter=['lowercase'])
-text_analyzer = analyzer('custom', tokenizer='simple', filter=['stop'])
-starring_analyzer = analyzer('custom', tokenizer='standard')
+text_analyzer = analyzer('custom', tokenizer='standard', filter=['lowercase', 'stop'])
+runtime_analyzer = analyzer('simple', ignore_malformed=True)
+
+
+def test_analyzer(text=r"The 2 QUICK Brown-Foxes jumped over the lazy dog's bone.", analyzer=text_analyzer):
+    """
+    you might want to test your analyzer after you define it
+    :param text: a string
+    :param analyzer: the analyzer you defined
+    :return: list of tokens processed by analyzer
+    """
+    output = analyzer.simulate(text)
+    return [t.token for t in output.tokens]
 
 
 # --- Add more analyzers here ---
@@ -36,9 +45,15 @@ starring_analyzer = analyzer('custom', tokenizer='standard')
 # You can use existing es analyzers or use ones you define yourself as above.
 class Movie(Document):
     title = Text(analyzer=title_analyzer)
-    text = Text(analyzer='simple')
-    starring = Text(analyzer=my_analyzer)
-    runtime = Integer(ignore_malformed=True)
+    director = Text(analyzer=title_analyzer)
+    starring = Text(analyzer=title_analyzer)
+    runtime = Integer(analyzer=runtime_analyzer)
+    country = Text(analyzer=title_analyzer)
+    language = Text(analyzer=title_analyzer)
+    time = Text(analyzer=title_analyzer)
+    location = Text(analyzer=title_analyzer)
+    text = Text(analyzer=text_analyzer)
+    categories = Text(analyzer=title_analyzer)
 
     # --- Add more fields here ---
     # What data type for your field? List?
@@ -56,25 +71,73 @@ def create_index(es_object, index_name='sample_film_index'):
         "settings": {
             "number_of_shards": 5,
             "number_of_replicas": 1,
-            "index.mapping.ignore_malformed": True
+            "index.mapping.ignore_malformed": True,
+            "analysis": {
+                "analyzer": {
+                    "title_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "whitespace",
+                        "filter": ["lowercase"]
+                    },
+                    "text_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "english_stop"]
+                    },
+                },
+                "filter": {
+                    "english_stop": {
+                        "type": "stop",
+                        "stopwords": "_english_"
+                    }
+                }
+            }
         },
         "mappings": {
             "doc": {
-                "dynamic": "strict",
                 "properties": {
-                    "title": {"type": "text"},
-                    "director": {"type": "text", "ignore_malformed": True},
-                    "starring": {"type": "text", "ignore_malformed": True},
-                    "runtime": {"type": "integer",
-                                "ignore_malformed": True,
-                                },
-                    "country": {"type": "text", "ignore_malformed": True},
-                    "language": {"type": "text", "ignore_malformed": True},
-                    "time": {"type": "long", "ignore_malformed": True},
-                    "location": {"type": "text", "ignore_malformed": True},
-                    "categories": {"type": "text", "ignore_malformed": True},
-                    "text": {"type": "text"},
-
+                    "title": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "starring": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "director": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "country": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "language": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "location": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "categories": {
+                        "type": "text",
+                        "analyzer": "title_analyzer",
+                    },
+                    "runtime": {
+                        "type": "long",
+                        "analyzer": "simple",
+                        "ignore_malformed": True,
+                    },
+                    "time": {
+                        "type": "long",
+                        "analyzer": "simple",
+                        "ignore_malformed": True
+                    },
+                    "text": {
+                        "type": "text",
+                        "analyzer": "text_analyzer",
+                    },
                 }
             }
         }
@@ -115,7 +178,7 @@ def store_record(elastic_object, index_name='sample_film_index', record='films_c
                     "title": movies[str(mid)]['Title'],
                     "director": movies[str(mid)]['Director'],
                     "starring": movies[str(mid)]['Starring'],
-                    # "runtime": movies[str(mid)]['Running Time'],
+                    "runtime": parse_runtime(movies[str(mid)]['Running Time']),
                     "language": movies[str(mid)]['Language'],
                     "time": movies[str(mid)]['Time'],
                     "location": movies[str(mid)]['Location'],
@@ -130,6 +193,13 @@ def store_record(elastic_object, index_name='sample_film_index', record='films_c
         print(str(ex))
 
 
+def parse_runtime(time):
+    if type(time) == int:
+        return time
+    else:
+        return None
+
+
 # Populate the index
 def buildIndex():
     """
@@ -142,7 +212,6 @@ def buildIndex():
     # film_index.settings(index={'mapping': {'ignore_malformed': True}})
     if film_index.exists():
         film_index.delete()  # Overwrite any previous version
-        print('ee')
     film_index.create()
 
     # Open the json film corpus
@@ -164,12 +233,14 @@ def buildIndex():
                 "_type": 'doc',
                 "_id": mid,
                 "title": movies[str(mid)]['Title'],
-                "text": movies[str(mid)]['Text'],
+                "runtime": parse_runtime(movies[str(mid)]['Running Time']),
+                "language": movies[str(mid)]['Language'],
+                "director": movies[str(mid)]['Director'],
                 "starring": movies[str(mid)]['Starring'],
-                # "runtime": movies[str(mid)]['Running Time'],
-                # You would like to convert runtime to integer (in minutes)
-
-                # --- Add more fields here ---
+                "location": movies[str(mid)]['Location'],
+                "time": movies[str(mid)]['Time'],
+                "text": movies[str(mid)]['Text'],
+                "categories": movies[str(mid)]['Categories'],
             }
 
     helpers.bulk(es, actions())
@@ -178,11 +249,13 @@ def buildIndex():
 # command line invocation builds index and prints the running time.
 def main():
     start_time = time.time()
-    # buildIndex()
-    create_index(es)
-    store_record(es)
+    buildIndex()
+    # create_index(es)
+    # store_record(es)
+
     print("=== Built index in %s seconds ===" % (time.time() - start_time))
 
 
 if __name__ == '__main__':
     main()
+    # print(test_analyzer())

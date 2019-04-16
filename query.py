@@ -42,9 +42,14 @@ def search():
 @app.route("/results", defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route("/results/<page>", methods=['GET', 'POST'])
 def results(page):
-    global tmp_text
     global tmp_title
+    global tmp_text
     global tmp_star
+    global tmp_director
+    global tmp_language
+    global tmp_location
+    global tmp_time
+    global tmp_categories
     global tmp_min
     global tmp_max
     global gresults
@@ -57,6 +62,11 @@ def results(page):
     if request.method == 'POST':
         text_query = request.form['query']
         star_query = request.form['starring']
+        director_query = request.form['director']
+        language_query = request.form['language']
+        location_query = request.form['location']
+        time_query = request.form['time']
+        categories_query = request.form['categories']
         mintime_query = request.form['mintime']
         if len(mintime_query) is 0:
             mintime = 0
@@ -71,12 +81,23 @@ def results(page):
         # update global variable template data
         tmp_text = text_query
         tmp_star = star_query
+        tmp_director = director_query
+        tmp_language = language_query
+        tmp_location = location_query
+        tmp_time = time_query
+        tmp_categories = categories_query
         tmp_min = mintime
         tmp_max = maxtime
     else:
         # use the current values stored in global variables.
         text_query = tmp_text
         star_query = tmp_star
+        director_query = tmp_director
+        language_query = tmp_language
+        location_query = tmp_location
+        time_query = tmp_time
+        categories_query = tmp_categories
+
         mintime = tmp_min
         if tmp_min > 0:
             mintime_query = tmp_min
@@ -92,6 +113,11 @@ def results(page):
     shows = {}
     shows['text'] = text_query
     shows['star'] = star_query
+    shows['director'] = director_query
+    shows['language'] = language_query
+    shows['location'] = location_query
+    shows['time'] = time_query
+    shows['categories'] = categories_query
     shows['maxtime'] = maxtime_query
     shows['mintime'] = mintime_query
 
@@ -103,22 +129,45 @@ def results(page):
     # Each call to search.query method adds criteria to our growing elasticsearch query.
     # You will change this section based on how you want to process the query data input into your interface.
 
+    # phrase = re.findall(r'"(.*?)"', text_query)
+    # if len(phrase) != 0:
+    #     # s = s.query(Q('match_phrase', text=phrase))
+    #     s = search.query('match_phrase', query=phrase[0])
+    # else:
     # search for runtime using a range query
     s = search.query('range', runtime={'gte': mintime, 'lte': maxtime})
-
     # Conjunctive search over multiple fields (title and text) using the text_query passed in
     if len(text_query) > 0:
-        s = s.query('multi_match', query=text_query, type='cross_fields', fields=['title', 'text'], operator='and')
+        s = s.query('multi_match', query=text_query, type='cross_fields', fields=['title^3', 'text'], operator='and')
 
-    # search for matching stars
-    # You should support multiple values (list)
+        response = s.execute()
+        if len(response) == 0:
+            s = search.query('range', runtime={'gte': mintime, 'lte': maxtime})
+            s = s.query('multi_match', query=text_query, type='cross_fields', fields=['title^3', 'text'],
+                        operator='or')
+
+        phrase = re.findall(r'"(.*?)"', text_query)
+        if len(phrase) != 0:
+            s = s.query(Q('match_phrase', text=phrase[0]))
+
+    # support multiple values (list)
     if len(star_query) > 0:
         s = s.query('match', starring=star_query)
+    if len(director_query) > 0:
+        s = s.query('match', director=director_query)
+    if len(language_query) > 0:
+        s = s.query('match', language=language_query)
+    if len(location_query) > 0:
+        s = s.query('match', location=location_query)
+    if len(time_query) > 0:
+        s = s.query('match', time=time_query)
+    if len(categories_query) > 0:
+        s = s.query('match', categories=categories_query)
 
     # highlight
     s = s.highlight_options(pre_tags='<mark>', post_tags='</mark>')
-    s = s.highlight('text', fragment_size=999999999, number_of_fragments=1)
-    s = s.highlight('title', fragment_size=999999999, number_of_fragments=1)
+    for key in shows:
+        s = s.highlight(key, fragment_size=999999999, number_of_fragments=1)
 
     # determine the subset of results to display (based on current <page> value)
     start = 0 + (page - 1) * 10
@@ -133,20 +182,13 @@ def results(page):
         result = {}
         result['score'] = hit.meta.score
 
+        for field in hit:
+            if field != 'meta':
+                result[field] = getattr(hit, field)
+        result['title'] = ' | '.join(result['title'])
         if 'highlight' in hit.meta:
-            if 'title' in hit.meta.highlight:
-                result['title'] = hit.meta.highlight.title[0]
-            else:
-                result['title'] = hit.title
-
-            if 'text' in hit.meta.highlight:
-                result['text'] = hit.meta.highlight.text[0]
-            else:
-                result['text'] = hit.text
-
-        else:
-            result['title'] = hit.title
-            result['text'] = hit.text
+            for field in hit.meta.highlight:
+                result[field] = getattr(hit.meta.highlight, field)[0]
         resultList[hit.meta.id] = result
 
     # make the result list available globally
@@ -176,10 +218,8 @@ def documents(res):
     filmtitle = film['title']
     for term in film:
         if type(film[term]) is AttrList:
-            s = "\n"
-            for item in film[term]:
-                s += item + ",\n "
-            film[term] = s
+            film[term] = ', '.join(film[term])
+
     # fetch the movie from the elasticsearch index using its id
     movie = Movie.get(id=res, index='sample_film_index')
     filmdic = movie.to_dict()
